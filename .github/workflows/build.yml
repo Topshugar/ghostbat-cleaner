@@ -17,7 +17,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Create missing files to match your .kt files
+      - name: Create missing files
         run: |
           echo "include ':app'" > settings.gradle
           
@@ -66,15 +66,15 @@ jobs:
           </manifest>
           EOF
           fi
-          ls -R
 
-      - name: Build APK
-        uses: gradle/gradle-build-action@v3
+      - name: Build APK without wrapper
+        uses: gradle/actions/setup-gradle@v3
         with:
+          gradle-version: 8.5
           arguments: :app:assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ghostbat-cleaner-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*.apk
