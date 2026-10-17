@@ -16,10 +16,20 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Create missing files
         run: |
           echo "include ':app'" > settings.gradle
+          
+          # THIS WAS MISSING - FIXES YOUR ERROR
+          cat > gradle.properties << 'EOF'
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.jvmargs=-Xmx2g
+          EOF
           
           cat > build.gradle << 'EOF'
           buildscript {
@@ -42,6 +52,10 @@ jobs:
                   targetSdk 34
                   versionCode 1
                   versionName "1.0"
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
               }
           }
           dependencies {
@@ -66,8 +80,9 @@ jobs:
           </manifest>
           EOF
           fi
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
-      - name: Build APK without wrapper
+      - name: Build APK
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: 8.5
