@@ -17,23 +17,43 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Create ONLY missing config files
+      - name: Create missing Gradle files
         run: |
+          if [ ! -f settings.gradle ]; then
+            echo "include ':app'" > settings.gradle
+          fi
+          
+          if [ ! -f build.gradle ]; then
+            cat > build.gradle << 'EOF'
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.2.0'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          EOF
+          fi
+          
           if [ ! -f gradle.properties ]; then
             echo "android.useAndroidX=true" > gradle.properties
             echo "android.enableJetifier=true" >> gradle.properties
-            echo "org.gradle.jvmargs=-Xmx2g" >> gradle.properties
           fi
           
           echo "sdk.dir=/usr/local/lib/android/sdk" > local.properties
-          echo "sdk.dir=$ANDROID_HOME" >> local.properties 2>/dev/null || true
-          echo "sdk.dir=$ANDROID_SDK_ROOT" >> local.properties 2>/dev/null || true
-          cat local.properties
-          
           ls -la
-          ls -la app/ || true
+          cat settings.gradle
+          cat build.gradle
 
-      - name: Build APK from your existing files
+      - name: Build APK
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: 8.5
