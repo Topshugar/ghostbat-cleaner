@@ -3,6 +3,7 @@ name: Build GhostBat APK
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,56 +19,76 @@ jobs:
           
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-        
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        
-      - name: Create missing build files if needed
+
+      - name: Create missing project files
         run: |
-          # Create root build.gradle if missing
-          if [ ! -f build.gradle ]; then
-            echo "rootProject.name='GhostBat'" > settings.gradle
-            cat > build.gradle << 'EOF'
-          buildscript {
-            repositories { google(); mavenCentral() }
-            dependencies { classpath 'com.android.tools.build:gradle:8.1.0' }
-          }
-          allprojects { repositories { google(); mavenCentral() } }
-          EOF
-          fi
+          echo "include ':app'" > settings.gradle
           
-          # Create app/build.gradle if missing
-          mkdir -p app
-          if [ ! -f app/build.gradle ]; then
-            cat > app/build.gradle << 'EOF'
-          plugins { id 'com.android.application' }
+          cat > build.gradle << 'EOF'
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.2.0'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          EOF
+          
+          cat > app/build.gradle << 'EOF'
+          plugins {
+              id 'com.android.application'
+          }
           android {
-            namespace 'com.ghostbat.cleaner'
-            compileSdk 34
-            defaultConfig {
-              applicationId "com.ghostbat.cleaner"
-              minSdk 24
-              targetSdk 34
-              versionCode 1
-              versionName "1.0"
-            }
+              namespace 'com.ghostbat.cleaner'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.ghostbat.cleaner"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              buildTypes {
+                  debug { minifyEnabled false }
+                  release { minifyEnabled false }
+              }
           }
           dependencies {
-            implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'androidx.appcompat:appcompat:1.6.1'
           }
           EOF
-          fi
           
-          ls -R
+          mkdir -p app/src/main
+          cat > app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+              <application android:label="GhostBat Cleaner" android:theme="@android:style/Theme.Material.Light">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
 
-      - name: Build APK
-        run: gradle assembleDebug --stacktrace || ./gradlew assembleDebug || echo "Build attempt done"
+      - name: Build with Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ghostbat-cleaner-apk
-          path: |
-            app/build/outputs/apk/debug/*.apk
-            **/*.apk
-          if-no-files-found: warn
+          path: app/build/outputs/apk/debug/*.apk
